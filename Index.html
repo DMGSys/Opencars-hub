@@ -1,0 +1,906 @@
+<!DOCTYPE html>
+
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>OpenCars — Arquitectura de Comunicación</title>
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;400;600;700&family=Syne:wght@400;600;800&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #070B14;
+    --bg2: #0D1426;
+    --panel: #111827;
+    --border: #1E2D45;
+    --blue: #3B82F6;
+    --cyan: #06B6D4;
+    --green: #10B981;
+    --purple: #8B5CF6;
+    --orange: #F59E0B;
+    --red: #EF4444;
+    --text: #E2E8F0;
+    --muted: #64748B;
+    --glow-blue: rgba(59,130,246,0.4);
+    --glow-cyan: rgba(6,182,212,0.4);
+    --glow-green: rgba(16,185,129,0.35);
+  }
+
+- { margin: 0; padding: 0; box-sizing: border-box; }
+
+body {
+background: var(–bg);
+color: var(–text);
+font-family: ‘Syne’, sans-serif;
+min-height: 100vh;
+overflow-x: hidden;
+}
+
+/* Grid de fondo */
+body::before {
+content: ‘’;
+position: fixed;
+inset: 0;
+background-image:
+linear-gradient(rgba(59,130,246,0.03) 1px, transparent 1px),
+linear-gradient(90deg, rgba(59,130,246,0.03) 1px, transparent 1px);
+background-size: 40px 40px;
+pointer-events: none;
+z-index: 0;
+}
+
+.container {
+position: relative;
+z-index: 1;
+max-width: 1200px;
+margin: 0 auto;
+padding: 40px 24px;
+}
+
+/* Header */
+.header {
+text-align: center;
+margin-bottom: 60px;
+animation: fadeDown 0.8s ease;
+}
+
+.header-badge {
+display: inline-block;
+font-family: ‘JetBrains Mono’, monospace;
+font-size: 11px;
+letter-spacing: 3px;
+color: var(–cyan);
+border: 1px solid rgba(6,182,212,0.3);
+padding: 6px 16px;
+border-radius: 20px;
+margin-bottom: 20px;
+background: rgba(6,182,212,0.05);
+}
+
+.header h1 {
+font-size: clamp(28px, 4vw, 48px);
+font-weight: 800;
+letter-spacing: -1px;
+background: linear-gradient(135deg, #E2E8F0 30%, #3B82F6);
+-webkit-background-clip: text;
+-webkit-text-fill-color: transparent;
+background-clip: text;
+margin-bottom: 12px;
+}
+
+.header p {
+color: var(–muted);
+font-size: 15px;
+font-weight: 400;
+}
+
+/* Diagrama principal */
+.diagram {
+display: flex;
+flex-direction: column;
+align-items: center;
+gap: 0;
+position: relative;
+}
+
+/* Nodo */
+.node {
+width: 100%;
+max-width: 520px;
+background: var(–panel);
+border: 1px solid var(–border);
+border-radius: 16px;
+padding: 20px 24px;
+position: relative;
+opacity: 0;
+transform: translateY(20px);
+transition: box-shadow 0.3s, border-color 0.3s;
+}
+
+.node.visible { animation: nodeIn 0.5s ease forwards; }
+.node:hover { border-color: var(–blue); box-shadow: 0 0 30px var(–glow-blue); }
+
+.node-header {
+display: flex;
+align-items: center;
+gap: 12px;
+margin-bottom: 10px;
+}
+
+.node-icon {
+width: 40px;
+height: 40px;
+border-radius: 10px;
+display: flex;
+align-items: center;
+justify-content: center;
+font-size: 20px;
+flex-shrink: 0;
+}
+
+.node-title {
+font-weight: 700;
+font-size: 16px;
+letter-spacing: -0.3px;
+}
+
+.node-subtitle {
+font-family: ‘JetBrains Mono’, monospace;
+font-size: 11px;
+color: var(–muted);
+margin-top: 2px;
+}
+
+.node-desc {
+font-size: 13px;
+color: #94A3B8;
+line-height: 1.6;
+margin-top: 8px;
+}
+
+.node-tags {
+display: flex;
+flex-wrap: wrap;
+gap: 6px;
+margin-top: 10px;
+}
+
+.tag {
+font-family: ‘JetBrains Mono’, monospace;
+font-size: 10px;
+padding: 3px 10px;
+border-radius: 20px;
+border: 1px solid;
+}
+
+/* Colores por nodo */
+.node-whatsapp .node-icon { background: rgba(37,211,102,0.15); }
+.node-whatsapp { border-color: rgba(37,211,102,0.25); }
+.node-whatsapp:hover { border-color: #25D366; box-shadow: 0 0 30px rgba(37,211,102,0.3); }
+
+.node-meta .node-icon { background: rgba(59,130,246,0.15); }
+.node-meta { border-color: rgba(59,130,246,0.2); }
+
+.node-chatwoot .node-icon { background: rgba(139,92,246,0.15); }
+.node-chatwoot { border-color: rgba(139,92,246,0.2); }
+.node-chatwoot:hover { border-color: var(–purple); box-shadow: 0 0 30px rgba(139,92,246,0.3); }
+
+.node-n8n .node-icon { background: rgba(245,158,11,0.15); }
+.node-n8n { border-color: rgba(245,158,11,0.2); }
+.node-n8n:hover { border-color: var(–orange); box-shadow: 0 0 30px rgba(245,158,11,0.3); }
+
+.node-flowise .node-icon { background: rgba(6,182,212,0.15); }
+.node-flowise { border-color: rgba(6,182,212,0.2); }
+.node-flowise:hover { border-color: var(–cyan); box-shadow: 0 0 30px var(–glow-cyan); }
+
+.node-reply .node-icon { background: rgba(16,185,129,0.15); }
+.node-reply { border-color: rgba(16,185,129,0.2); }
+.node-reply:hover { border-color: var(–green); box-shadow: 0 0 30px var(–glow-green); }
+
+/* Conector animado */
+.connector {
+display: flex;
+flex-direction: column;
+align-items: center;
+position: relative;
+height: 80px;
+opacity: 0;
+}
+
+.connector.visible { animation: fadeIn 0.4s ease 0.1s forwards; }
+
+.connector-line {
+width: 2px;
+height: 100%;
+position: relative;
+overflow: hidden;
+background: linear-gradient(to bottom, rgba(59,130,246,0.1), rgba(59,130,246,0.1));
+}
+
+.connector-line::after {
+content: ‘’;
+position: absolute;
+top: -100%;
+left: 0;
+width: 100%;
+height: 100%;
+background: linear-gradient(to bottom, transparent, var(–blue), transparent);
+animation: flowDown 1.8s ease-in-out infinite;
+}
+
+.connector-label {
+position: absolute;
+left: calc(50% + 14px);
+top: 50%;
+transform: translateY(-50%);
+font-family: ‘JetBrains Mono’, monospace;
+font-size: 10px;
+color: var(–muted);
+white-space: nowrap;
+background: var(–bg2);
+padding: 3px 8px;
+border-radius: 6px;
+border: 1px solid var(–border);
+}
+
+.connector-dot {
+width: 8px;
+height: 8px;
+border-radius: 50%;
+background: var(–blue);
+box-shadow: 0 0 10px var(–glow-blue);
+position: absolute;
+left: 50%;
+transform: translateX(-50%);
+animation: dotFlow 1.8s ease-in-out infinite;
+}
+
+/* Sección de bots */
+.bots-section {
+margin-top: 60px;
+opacity: 0;
+animation: fadeUp 0.6s ease 1.5s forwards;
+}
+
+.section-title {
+text-align: center;
+font-size: 20px;
+font-weight: 700;
+margin-bottom: 8px;
+letter-spacing: -0.5px;
+}
+
+.section-sub {
+text-align: center;
+font-size: 13px;
+color: var(–muted);
+margin-bottom: 32px;
+font-family: ‘JetBrains Mono’, monospace;
+}
+
+.bots-grid {
+display: grid;
+grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+gap: 16px;
+}
+
+.bot-card {
+background: var(–panel);
+border: 1px solid var(–border);
+border-radius: 14px;
+padding: 18px;
+position: relative;
+overflow: hidden;
+cursor: pointer;
+transition: all 0.3s;
+opacity: 0;
+}
+
+.bot-card.visible { animation: nodeIn 0.4s ease forwards; }
+.bot-card:hover { transform: translateY(-4px); }
+
+.bot-card::before {
+content: ‘’;
+position: absolute;
+top: 0;
+left: 0;
+right: 0;
+height: 3px;
+border-radius: 14px 14px 0 0;
+}
+
+.bot-card.nora::before { background: linear-gradient(90deg, #10B981, #06B6D4); }
+.bot-card.martina-fc::before { background: linear-gradient(90deg, #3B82F6, #8B5CF6); }
+.bot-card.martina-pw::before { background: linear-gradient(90deg, #10B981, #3B82F6); }
+.bot-card.martina-gv::before { background: linear-gradient(90deg, #F59E0B, #EF4444); }
+.bot-card.mateo::before { background: linear-gradient(90deg, #06B6D4, #3B82F6); }
+
+.bot-card:hover { border-color: rgba(59,130,246,0.4); box-shadow: 0 8px 30px rgba(0,0,0,0.3); }
+
+.bot-name {
+font-weight: 700;
+font-size: 15px;
+margin-bottom: 4px;
+letter-spacing: -0.3px;
+}
+
+.bot-brand {
+font-family: ‘JetBrains Mono’, monospace;
+font-size: 10px;
+color: var(–muted);
+margin-bottom: 12px;
+}
+
+.bot-phone {
+font-family: ‘JetBrains Mono’, monospace;
+font-size: 11px;
+color: #94A3B8;
+margin-bottom: 10px;
+}
+
+.bot-status {
+display: flex;
+align-items: center;
+gap: 6px;
+font-size: 11px;
+color: var(–green);
+font-family: ‘JetBrains Mono’, monospace;
+}
+
+.status-dot {
+width: 6px;
+height: 6px;
+border-radius: 50%;
+background: var(–green);
+box-shadow: 0 0 8px var(–glow-green);
+animation: pulse 2s ease infinite;
+}
+
+.bot-model {
+margin-top: 8px;
+font-size: 10px;
+font-family: ‘JetBrains Mono’, monospace;
+color: var(–muted);
+padding: 3px 8px;
+background: rgba(255,255,255,0.03);
+border-radius: 6px;
+border: 1px solid var(–border);
+display: inline-block;
+}
+
+/* Demo animación mensaje */
+.demo-section {
+margin-top: 60px;
+opacity: 0;
+animation: fadeUp 0.6s ease 2s forwards;
+}
+
+.demo-flow {
+background: var(–panel);
+border: 1px solid var(–border);
+border-radius: 16px;
+padding: 28px;
+position: relative;
+overflow: hidden;
+}
+
+.demo-flow::before {
+content: ‘’;
+position: absolute;
+inset: 0;
+background: radial-gradient(ellipse at 50% 0%, rgba(59,130,246,0.05) 0%, transparent 70%);
+pointer-events: none;
+}
+
+.demo-title {
+font-family: ‘JetBrains Mono’, monospace;
+font-size: 11px;
+color: var(–cyan);
+letter-spacing: 2px;
+margin-bottom: 24px;
+text-transform: uppercase;
+}
+
+.flow-steps {
+display: flex;
+align-items: center;
+justify-content: space-between;
+gap: 8px;
+flex-wrap: wrap;
+}
+
+.flow-step {
+display: flex;
+flex-direction: column;
+align-items: center;
+gap: 8px;
+flex: 1;
+min-width: 80px;
+}
+
+.flow-step-icon {
+width: 48px;
+height: 48px;
+border-radius: 12px;
+display: flex;
+align-items: center;
+justify-content: center;
+font-size: 22px;
+border: 1px solid var(–border);
+background: var(–bg2);
+position: relative;
+transition: all 0.3s;
+}
+
+.flow-step-icon.active {
+border-color: var(–cyan);
+box-shadow: 0 0 20px var(–glow-cyan);
+background: rgba(6,182,212,0.1);
+transform: scale(1.1);
+}
+
+.flow-step-label {
+font-family: ‘JetBrains Mono’, monospace;
+font-size: 10px;
+color: var(–muted);
+text-align: center;
+}
+
+.flow-arrow {
+color: var(–border);
+font-size: 18px;
+flex-shrink: 0;
+transition: color 0.3s;
+}
+
+.flow-arrow.active { color: var(–cyan); }
+
+.demo-log {
+margin-top: 24px;
+background: var(–bg);
+border-radius: 10px;
+padding: 16px;
+font-family: ‘JetBrains Mono’, monospace;
+font-size: 12px;
+min-height: 90px;
+border: 1px solid var(–border);
+overflow: hidden;
+}
+
+.log-line {
+display: flex;
+gap: 10px;
+padding: 3px 0;
+opacity: 0;
+transform: translateX(-10px);
+transition: all 0.3s;
+}
+
+.log-line.show {
+opacity: 1;
+transform: translateX(0);
+}
+
+.log-time { color: var(–muted); flex-shrink: 0; }
+.log-source { flex-shrink: 0; }
+.log-msg { color: #94A3B8; }
+
+.btn-demo {
+margin-top: 20px;
+padding: 10px 24px;
+background: linear-gradient(135deg, rgba(59,130,246,0.2), rgba(6,182,212,0.2));
+border: 1px solid rgba(59,130,246,0.4);
+color: var(–blue);
+border-radius: 8px;
+font-family: ‘JetBrains Mono’, monospace;
+font-size: 12px;
+cursor: pointer;
+transition: all 0.3s;
+letter-spacing: 1px;
+}
+
+.btn-demo:hover {
+background: linear-gradient(135deg, rgba(59,130,246,0.35), rgba(6,182,212,0.35));
+box-shadow: 0 0 20px var(–glow-blue);
+color: #fff;
+}
+
+/* Stats */
+.stats-bar {
+display: grid;
+grid-template-columns: repeat(4, 1fr);
+gap: 16px;
+margin-top: 60px;
+opacity: 0;
+animation: fadeUp 0.6s ease 2.4s forwards;
+}
+
+.stat-card {
+background: var(–panel);
+border: 1px solid var(–border);
+border-radius: 12px;
+padding: 20px;
+text-align: center;
+}
+
+.stat-num {
+font-size: 28px;
+font-weight: 800;
+background: linear-gradient(135deg, var(–blue), var(–cyan));
+-webkit-background-clip: text;
+-webkit-text-fill-color: transparent;
+background-clip: text;
+letter-spacing: -1px;
+}
+
+.stat-label {
+font-family: ‘JetBrains Mono’, monospace;
+font-size: 10px;
+color: var(–muted);
+margin-top: 4px;
+letter-spacing: 1px;
+text-transform: uppercase;
+}
+
+/* Animaciones */
+@keyframes fadeDown { from { opacity:0; transform:translateY(-20px); } to { opacity:1; transform:translateY(0); } }
+@keyframes fadeUp { from { opacity:0; transform:translateY(20px); } to { opacity:1; transform:translateY(0); } }
+@keyframes fadeIn { from { opacity:0; } to { opacity:1; } }
+@keyframes nodeIn { from { opacity:0; transform:translateY(20px); } to { opacity:1; transform:translateY(0); } }
+@keyframes flowDown {
+0% { top: -100%; opacity:0; }
+20% { opacity:1; }
+80% { opacity:1; }
+100% { top: 100%; opacity:0; }
+}
+@keyframes dotFlow {
+0% { top: 0; opacity:0; }
+10% { opacity:1; }
+90% { opacity:1; }
+100% { top: 100%; opacity:0; }
+}
+@keyframes pulse {
+0%, 100% { opacity:1; transform:scale(1); }
+50% { opacity:0.5; transform:scale(0.8); }
+}
+
+@media (max-width: 600px) {
+.stats-bar { grid-template-columns: repeat(2,1fr); }
+.flow-steps { gap: 4px; }
+.flow-step-icon { width: 38px; height: 38px; font-size: 18px; }
+}
+</style>
+
+</head>
+<body>
+
+<div class="container">
+
+  <!-- Header -->
+
+  <div class="header">
+    <div class="header-badge">ARQUITECTURA DE COMUNICACIÓN</div>
+    <h1>OpenCars Hub</h1>
+    <p>Flujo en tiempo real: WhatsApp → Chatwoot → n8n → Flowise → Respuesta IA</p>
+  </div>
+
+  <!-- Diagrama vertical -->
+
+  <div class="diagram" id="diagram">
+
+```
+<!-- Nodo 1: Cliente -->
+<div class="node node-whatsapp" id="n0">
+  <div class="node-header">
+    <div class="node-icon">📱</div>
+    <div>
+      <div class="node-title">Cliente WhatsApp</div>
+      <div class="node-subtitle">Meta Cloud API — WABA</div>
+    </div>
+  </div>
+  <div class="node-desc">El cliente envía un mensaje a través de WhatsApp Business. Meta lo recibe y lo reenvía vía webhook HTTP POST al hub centralizado.</div>
+  <div class="node-tags">
+    <span class="tag" style="color:#25D366;border-color:rgba(37,211,102,0.3)">WhatsApp Business</span>
+    <span class="tag" style="color:#3B82F6;border-color:rgba(59,130,246,0.3)">Meta Cloud API</span>
+    <span class="tag" style="color:#94A3B8;border-color:#1E2D45">5 números activos</span>
+  </div>
+</div>
+
+<div class="connector" id="c0">
+  <div class="connector-line"></div>
+  <div class="connector-dot"></div>
+  <div class="connector-label">HTTPS webhook POST</div>
+</div>
+
+<!-- Nodo 2: Chatwoot -->
+<div class="node node-chatwoot" id="n1">
+  <div class="node-header">
+    <div class="node-icon">💬</div>
+    <div>
+      <div class="node-title">Chatwoot</div>
+      <div class="node-subtitle">hub.opencars.com.ar — EC2 t3.medium</div>
+    </div>
+  </div>
+  <div class="node-desc">CRM de mensajería centralizado. Recibe el mensaje, lo asigna al inbox correcto y emite un evento <code style="color:var(--cyan);font-family:'JetBrains Mono',monospace;font-size:11px">message_created</code> hacia los webhooks registrados.</div>
+  <div class="node-tags">
+    <span class="tag" style="color:#8B5CF6;border-color:rgba(139,92,246,0.3)">5 Inboxes</span>
+    <span class="tag" style="color:#3B82F6;border-color:rgba(59,130,246,0.3)">AWS São Paulo</span>
+    <span class="tag" style="color:#94A3B8;border-color:#1E2D45">SSL Let's Encrypt</span>
+  </div>
+</div>
+
+<div class="connector" id="c1">
+  <div class="connector-line"></div>
+  <div class="connector-dot"></div>
+  <div class="connector-label">webhook message_created</div>
+</div>
+
+<!-- Nodo 3: n8n -->
+<div class="node node-n8n" id="n2">
+  <div class="node-header">
+    <div class="node-icon">⚙️</div>
+    <div>
+      <div class="node-title">n8n</div>
+      <div class="node-subtitle">n8n.opencars.com.ar — Orquestador</div>
+    </div>
+  </div>
+  <div class="node-desc">Recibe el webhook y aplica lógica de routing: filtra por <code style="color:var(--orange);font-family:'JetBrains Mono',monospace;font-size:11px">message_type=incoming</code> y <code style="color:var(--orange);font-family:'JetBrains Mono',monospace;font-size:11px">inbox.id</code> para derivar al bot correcto. 5 workflows independientes.</div>
+  <div class="node-tags">
+    <span class="tag" style="color:#F59E0B;border-color:rgba(245,158,11,0.3)">5 Workflows</span>
+    <span class="tag" style="color:#10B981;border-color:rgba(16,185,129,0.3)">Auto-hospedado</span>
+    <span class="tag" style="color:#94A3B8;border-color:#1E2D45">Sin límite de ejecuciones</span>
+  </div>
+</div>
+
+<div class="connector" id="c2">
+  <div class="connector-line"></div>
+  <div class="connector-dot"></div>
+  <div class="connector-label">POST /api/v1/prediction/{chatflow_id}</div>
+</div>
+
+<!-- Nodo 4: Flowise -->
+<div class="node node-flowise" id="n3">
+  <div class="node-header">
+    <div class="node-icon">🤖</div>
+    <div>
+      <div class="node-title">Flowise</div>
+      <div class="node-subtitle">flowise.opencars.com.ar — Motor de IA</div>
+    </div>
+  </div>
+  <div class="node-desc">Ejecuta el agente conversacional con memoria persistente por sesión. Cada bot usa su propio chatflow con el modelo de IA correspondiente y acceso a herramientas (turnos, stock, etc.).</div>
+  <div class="node-tags">
+    <span class="tag" style="color:#06B6D4;border-color:rgba(6,182,212,0.3)">OpenAI GPT-4</span>
+    <span class="tag" style="color:#8B5CF6;border-color:rgba(139,92,246,0.3)">Vertex AI Gemini</span>
+    <span class="tag" style="color:#94A3B8;border-color:#1E2D45">sessionId por teléfono</span>
+  </div>
+</div>
+
+<div class="connector" id="c3">
+  <div class="connector-line"></div>
+  <div class="connector-dot"></div>
+  <div class="connector-label">respuesta JSON → Chatwoot API</div>
+</div>
+
+<!-- Nodo 5: Respuesta -->
+<div class="node node-reply" id="n4">
+  <div class="node-header">
+    <div class="node-icon">✅</div>
+    <div>
+      <div class="node-title">Respuesta al Cliente</div>
+      <div class="node-subtitle">Chatwoot API → Meta → WhatsApp</div>
+    </div>
+  </div>
+  <div class="node-desc">n8n envía la respuesta del bot a Chatwoot vía API (<code style="color:var(--green);font-family:'JetBrains Mono',monospace;font-size:11px">message_type: outgoing</code>). Chatwoot la entrega al cliente por WhatsApp y queda registrada en el CRM para revisión humana.</div>
+  <div class="node-tags">
+    <span class="tag" style="color:#10B981;border-color:rgba(16,185,129,0.3)">Entregado al cliente</span>
+    <span class="tag" style="color:#8B5CF6;border-color:rgba(139,92,246,0.3)">Visible en CRM</span>
+    <span class="tag" style="color:#94A3B8;border-color:#1E2D45">Handoff humano disponible</span>
+  </div>
+</div>
+```
+
+  </div>
+
+  <!-- Demo animada -->
+
+  <div class="demo-section">
+    <div class="demo-flow">
+      <div class="demo-title">▶ SIMULACIÓN EN VIVO — CICLO DE UN MENSAJE</div>
+
+```
+  <div class="flow-steps" id="flowSteps">
+    <div class="flow-step">
+      <div class="flow-step-icon" id="si0">📱</div>
+      <div class="flow-step-label">Cliente</div>
+    </div>
+    <div class="flow-arrow" id="fa0">→</div>
+    <div class="flow-step">
+      <div class="flow-step-icon" id="si1">☁️</div>
+      <div class="flow-step-label">Meta API</div>
+    </div>
+    <div class="flow-arrow" id="fa1">→</div>
+    <div class="flow-step">
+      <div class="flow-step-icon" id="si2">💬</div>
+      <div class="flow-step-label">Chatwoot</div>
+    </div>
+    <div class="flow-arrow" id="fa2">→</div>
+    <div class="flow-step">
+      <div class="flow-step-icon" id="si3">⚙️</div>
+      <div class="flow-step-label">n8n</div>
+    </div>
+    <div class="flow-arrow" id="fa3">→</div>
+    <div class="flow-step">
+      <div class="flow-step-icon" id="si4">🤖</div>
+      <div class="flow-step-label">Flowise</div>
+    </div>
+    <div class="flow-arrow" id="fa4">→</div>
+    <div class="flow-step">
+      <div class="flow-step-icon" id="si5">✅</div>
+      <div class="flow-step-label">Respuesta</div>
+    </div>
+  </div>
+
+  <div class="demo-log" id="demoLog"></div>
+  <button class="btn-demo" id="btnDemo" onclick="runDemo()">▶ SIMULAR MENSAJE</button>
+</div>
+```
+
+  </div>
+
+  <!-- Bots -->
+
+  <div class="bots-section">
+    <div class="section-title">Bots activos</div>
+    <div class="section-sub">5 workflows independientes — 4 marcas</div>
+    <div class="bots-grid">
+      <div class="bot-card nora" id="bot0">
+        <div class="bot-name">Nora</div>
+        <div class="bot-brand">PAMPAWAGEN</div>
+        <div class="bot-phone">+54 9 2477 60-9142</div>
+        <div class="bot-status"><div class="status-dot"></div> Activo</div>
+        <div class="bot-model">GPT-4o</div>
+      </div>
+      <div class="bot-card martina-fc" id="bot1">
+        <div class="bot-name">Martina FC</div>
+        <div class="bot-brand">FORTECAR</div>
+        <div class="bot-phone">+54 9 2477 62-9480</div>
+        <div class="bot-status"><div class="status-dot"></div> Activo</div>
+        <div class="bot-model">GPT-4o</div>
+      </div>
+      <div class="bot-card martina-pw" id="bot2">
+        <div class="bot-name">Martina PW</div>
+        <div class="bot-brand">PAMPAWAGEN</div>
+        <div class="bot-phone">+54 9 2302 41-1711</div>
+        <div class="bot-status"><div class="status-dot"></div> Activo</div>
+        <div class="bot-model">GPT-4o</div>
+      </div>
+      <div class="bot-card martina-gv" id="bot3">
+        <div class="bot-name">Martina GV</div>
+        <div class="bot-brand">GRANVILLE</div>
+        <div class="bot-phone">+54 9 2974 95-5040</div>
+        <div class="bot-status"><div class="status-dot"></div> Activo</div>
+        <div class="bot-model">Gemini Pro</div>
+      </div>
+      <div class="bot-card mateo" id="bot4">
+        <div class="bot-name">Mateo</div>
+        <div class="bot-brand">MASPLAN</div>
+        <div class="bot-phone">+54 9 2477 67-8422</div>
+        <div class="bot-status"><div class="status-dot"></div> Activo</div>
+        <div class="bot-model">GPT-4o</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Stats -->
+
+  <div class="stats-bar">
+    <div class="stat-card">
+      <div class="stat-num">5</div>
+      <div class="stat-label">Bots activos</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-num">∞</div>
+      <div class="stat-label">Ejecuciones / mes</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-num">$0</div>
+      <div class="stat-label">Costo n8n</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-num">AWS</div>
+      <div class="stat-label">São Paulo</div>
+    </div>
+  </div>
+
+</div>
+
+<script>
+  // Animaciones de entrada escalonadas
+  const nodes = document.querySelectorAll('.node');
+  const connectors = document.querySelectorAll('.connector');
+  const bots = document.querySelectorAll('.bot-card');
+
+  nodes.forEach((n, i) => {
+    setTimeout(() => n.classList.add('visible'), i * 200 + 300);
+  });
+  connectors.forEach((c, i) => {
+    setTimeout(() => c.classList.add('visible'), i * 200 + 450);
+  });
+  bots.forEach((b, i) => {
+    setTimeout(() => b.classList.add('visible'), i * 100 + 1600);
+  });
+
+  // Demo simulación
+  const demoSteps = [
+    { icon: 0, arrow: -1, color:'#25D366', time:'14:32:01', source:'WHATSAPP', msg:'Cliente envía: "Hola, quiero sacar un turno para el service de mi Chevrolet"', bot: null },
+    { icon: 1, arrow: 0,  color:'#3B82F6', time:'14:32:01', source:'META API ', msg:'Webhook POST → hub.opencars.com.ar/webhooks/meta', bot: null },
+    { icon: 2, arrow: 1,  color:'#8B5CF6', time:'14:32:02', source:'CHATWOOT ', msg:'Mensaje asignado a inbox #2 (Martina Fortecar) — conversation_id: 847', bot: null },
+    { icon: 3, arrow: 2,  color:'#F59E0B', time:'14:32:02', source:'N8N     ', msg:'Webhook recibido → IF inbox.id=2 ✓ → routing a Martina FC', bot: null },
+    { icon: 4, arrow: 3,  color:'#06B6D4', time:'14:32:02', source:'FLOWISE ', msg:'POST /api/v1/prediction/e09b0439... → sessionId: "+5492477629480" → tool: agendar_turno_v2', bot: null },
+    { icon: 5, arrow: 4,  color:'#10B981', time:'14:32:04', source:'RESPUESTA', msg:'Martina FC responde: "¡Hola! Te agendo el turno. ¿Qué día te queda mejor?" ✓', bot: null },
+  ];
+
+  let running = false;
+
+  function runDemo() {
+    if (running) return;
+    running = true;
+    document.getElementById('btnDemo').disabled = true;
+    document.getElementById('btnDemo').textContent = '⏳ SIMULANDO...';
+
+    // Reset
+    const log = document.getElementById('demoLog');
+    log.innerHTML = '';
+    for (let i = 0; i <= 5; i++) {
+      const el = document.getElementById('si' + i);
+      if (el) el.classList.remove('active');
+    }
+    for (let i = 0; i <= 4; i++) {
+      const el = document.getElementById('fa' + i);
+      if (el) el.classList.remove('active');
+    }
+
+    let step = 0;
+    function nextStep() {
+      if (step >= demoSteps.length) {
+        setTimeout(() => {
+          running = false;
+          document.getElementById('btnDemo').disabled = false;
+          document.getElementById('btnDemo').textContent = '▶ SIMULAR DE NUEVO';
+        }, 1000);
+        return;
+      }
+
+      const s = demoSteps[step];
+
+      // Activar icono
+      const iconEl = document.getElementById('si' + s.icon);
+      if (iconEl) iconEl.classList.add('active');
+
+      // Activar flecha
+      if (s.arrow >= 0) {
+        const arrowEl = document.getElementById('fa' + s.arrow);
+        if (arrowEl) arrowEl.classList.add('active');
+      }
+
+      // Log
+      const line = document.createElement('div');
+      line.className = 'log-line';
+      line.innerHTML = `
+        <span class="log-time">${s.time}</span>
+        <span class="log-source" style="color:${s.color}">[${s.source}]</span>
+        <span class="log-msg">${s.msg}</span>
+      `;
+      log.appendChild(line);
+      setTimeout(() => line.classList.add('show'), 50);
+      log.scrollTop = log.scrollHeight;
+
+      step++;
+      setTimeout(nextStep, step === 5 ? 1400 : 700);
+    }
+
+    nextStep();
+  }
+</script>
+
+</body>
+</html>
